@@ -26,6 +26,28 @@ func readVARINT(r *bufio.Reader) (uint64) {
     }
 }
 
+func decompressAmount(x uint64) (uint64) {
+    if x == 0 {
+        return 0
+    }
+    x--
+    e := x % 10
+    x /= 10
+    n := uint64(0)
+    if e < 9 {
+        d := (x % 9) + 1
+        x /= 9
+        n = x*10 + d
+    } else {
+        n = x+1
+    }
+    for e > 0 {
+        n *= 10
+        e--
+    }
+    return n
+}
+
 func hashToStr(bytes [32]byte) (string) {
     for i, j := 0, 31; i < j; i, j = i+1, j-1 {
         bytes[i], bytes[j] = bytes[j], bytes[i]
@@ -67,10 +89,9 @@ func main() {
         //log(fmt.Sprintf("\theight = %d, coinbase = %d",
         //    code >> 1, code & 1))
         _ = code
-        amount := readVARINT(utxof)
-        _ = amount
-        // TODO: decompress amount!
+        amount := decompressAmount(readVARINT(utxof))
         //log(fmt.Sprintf("\tamount = %d sats", amount))
+        _ = amount
         spkSize := readVARINT(utxof)
         //log(fmt.Sprintf("\tspk_size = %d", spkSize))
         var actualSize uint64
