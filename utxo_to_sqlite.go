@@ -94,4 +94,12 @@ func main() {
                 coin_idx, elapsed)
         }
     }
+
+    // check for EOF (read must fail)
+    _, err = utxof.ReadByte()
+    if err != nil {
+        fmt.Println("EOF reached.")
+    } else {
+        fmt.Println("WARNING: File is not at EOF yet!")
+    }
 }
