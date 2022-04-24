@@ -54,26 +54,27 @@ func main() {
 
     // read in coins
     for coin_idx := uint64(1); coin_idx <= numUTXOs; coin_idx++ {
-        log(fmt.Sprintf("Coin %d/%d:", coin_idx, numUTXOs))
+        //log(fmt.Sprintf("Coin %d/%d:", coin_idx, numUTXOs))
 
         // read key (COutPoint)
         var prevoutHash [32]byte
         var prevoutIndex uint32
         _, err = io.ReadFull(utxof, prevoutHash[:])
         err = binary.Read(utxof, binary.LittleEndian, &prevoutIndex)
-        log(fmt.Sprintf("\tprevout.hash = %s", hashToStr(prevoutHash)))
-        log(fmt.Sprintf("\tprevout.n = %d", prevoutIndex))
+        //log(fmt.Sprintf("\tprevout.hash = %s", hashToStr(prevoutHash)))
+        //log(fmt.Sprintf("\tprevout.n = %d", prevoutIndex))
 
         // read value (Coin)
         code := readVARINT(utxof)
-        log(fmt.Sprintf("\theight = %d, coinbase = %d",
-            code >> 1, code & 1))
+        //log(fmt.Sprintf("\theight = %d, coinbase = %d",
+        //    code >> 1, code & 1))
+        _ = code
         amount := readVARINT(utxof)
         _ = amount
         // TODO: decompress amount!
         //log(fmt.Sprintf("\tamount = %d sats", amount))
         spkSize := readVARINT(utxof)
-        log(fmt.Sprintf("\tspk_size = %d", spkSize))
+        //log(fmt.Sprintf("\tspk_size = %d", spkSize))
         var actualSize uint64
         switch spkSize {
         case 0, 1:
@@ -83,7 +84,7 @@ func main() {
         default:
             actualSize = spkSize - 6       
             if actualSize > 10000 {
-                log("TOO LONG SCRIPT!")
+                //log("TOO LONG SCRIPT!")
             }
         }
         buf := make([]byte, actualSize)
