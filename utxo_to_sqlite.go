@@ -1,6 +1,7 @@
 package main
 
 import (
+    "bufio"
     "encoding/binary"
     "fmt"
     "io"
@@ -35,10 +36,11 @@ func hashToStr(bytes [32]byte) (string) {
 }
 
 func main() {
-    utxof, err := os.OpenFile("/home/honey/.bitcoin/utxo.dat", os.O_RDONLY, 0600)
+    utxof2, err := os.OpenFile("/home/honey/.bitcoin/utxo.dat", os.O_RDONLY, 0600)
     if err != nil {
         return
     }
+    utxof := bufio.NewReader(utxof2)
 
     // read metadata
     var blockHash [32]byte
