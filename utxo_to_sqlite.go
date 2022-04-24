@@ -15,6 +15,29 @@ func log(str string) {
     // fmt.Println(str)
 }
 
+func readCompressedScript(spkSize uint64, r *bufio.Reader) ([]byte) {
+    var actualSize uint64
+    switch spkSize {
+    case 0, 1:
+        actualSize = 20
+    case 2, 3, 4, 5:
+        actualSize = 32
+    default:
+        actualSize = spkSize - 6
+        if actualSize > 10000 {
+            panic(fmt.Sprintf("too long script with size %d\n", actualSize))
+        }
+    }
+
+    // TODO: actually decompress types 0-5!
+
+    buf := make([]byte, actualSize)
+    _, err := io.ReadFull(r, buf[:])
+    if err != nil { panic(err) }
+
+    return buf
+}
+
 func readVARINT(r *bufio.Reader) (uint64) {
     n := uint64(0)
     for {
@@ -109,26 +132,12 @@ func main() {
         //log(fmt.Sprintf("\tamount = %d sats", amount))
         spkSize := readVARINT(utxof)
         //log(fmt.Sprintf("\tspk_size = %d", spkSize))
-        var actualSize uint64
-        switch spkSize {
-        case 0, 1:
-            actualSize = 20
-        case 2, 3, 4, 5:
-            actualSize = 32                 
-        default:
-            actualSize = spkSize - 6       
-            if actualSize > 10000 {
-                panic(fmt.Sprintf("too long script with size %d\n", actualSize))
-            }
-        }
-        buf := make([]byte, actualSize)
-        _, err = io.ReadFull(utxof, buf[:])
+        scriptPubKey := readCompressedScript(spkSize, utxof)
+
+        _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, scriptPubKey, amount)
         if err != nil { panic(err) }
 
-        _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, buf, amount)
-        if err != nil { panic(err) }
-
-        if coin_idx % 1000000 == 0 {
+        if coin_idx % (1024*1024) == 0 {
             elapsed := time.Since(t)
             fmt.Printf("%d coins read, %s passed since start\n",
                 coin_idx, elapsed)
