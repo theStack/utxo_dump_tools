@@ -13,12 +13,10 @@ func log(str string) {
     // fmt.Println(str)
 }
 
-func readVARINT(r io.Reader) (uint64) {
+func readVARINT(r *bufio.Reader) (uint64) {
     n := uint64(0)
-    var b [1]byte
     for {
-        r.Read(b[:])
-        dat := b[0]
+        dat, _ := r.ReadByte()
         n = (n << 7) | uint64(dat & 0x7f)
         if (dat & 0x80) > 0 {
             n++
@@ -84,7 +82,7 @@ func main() {
         default:
             actualSize = spkSize - 6       
             if actualSize > 10000 {
-                //log("TOO LONG SCRIPT!")
+                panic(fmt.Sprintf("too long script with size %d\n", actualSize))
             }
         }
         buf := make([]byte, actualSize)
