@@ -2,7 +2,9 @@ package main
 
 import (
     "bufio"
+    "database/sql"
     "encoding/binary"
+    _ "github.com/mattn/go-sqlite3"
     "fmt"
     "io"
     "os"
@@ -70,6 +72,20 @@ func main() {
     fmt.Printf("UTXO Snapshot at block %s, contains %d coins\n",
                hashToStr(blockHash), numUTXOs)
 
+    db, err := sql.Open("sqlite3", "file:utxos.sqlite3?_journal_mode=memory&_cache_size=-128000")
+    if err != nil { panic(err) }
+    defer db.Close()
+
+    _, err = db.Exec("DROP TABLE IF EXISTS utxos")
+    if err != nil { panic(err) }
+    _, err = db.Exec("CREATE TABLE utxos (prevoutHash BLOB, prevoutIndex INT, scriptPubKey BLOB, amount INT)")
+    if err != nil { panic(err) }
+    addUTXOStmt, err := db.Prepare("INSERT INTO utxos (prevoutHash, prevoutIndex, scriptPubKey, amount) VALUES (?, ?, ?, ?)")
+    if err != nil { panic(err) }
+    defer addUTXOStmt.Close()
+    tx, err := db.Begin()
+    if err != nil { panic(err) }
+
     t := time.Now()
 
     // read in coins
@@ -91,7 +107,6 @@ func main() {
         _ = code
         amount := decompressAmount(readVARINT(utxof))
         //log(fmt.Sprintf("\tamount = %d sats", amount))
-        _ = amount
         spkSize := readVARINT(utxof)
         //log(fmt.Sprintf("\tspk_size = %d", spkSize))
         var actualSize uint64
@@ -108,13 +123,20 @@ func main() {
         }
         buf := make([]byte, actualSize)
         _, err = io.ReadFull(utxof, buf[:])
+        if err != nil { panic(err) }
+
+        _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, buf, amount)
+        if err != nil { panic(err) }
 
         if coin_idx % 1000000 == 0 {
             elapsed := time.Since(t)
             fmt.Printf("%d coins read, %s passed since start\n",
                 coin_idx, elapsed)
+            tx.Commit()
+            tx, err = db.Begin()
         }
     }
+    tx.Commit()
 
     // check for EOF (read must fail)
     _, err = utxof.ReadByte()
