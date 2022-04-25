@@ -11,9 +11,7 @@ import (
     "time"
 )
 
-func log(str string) {
-    // fmt.Println(str)
-}
+const verbose bool = false;
 
 func readIntoSlice(r *bufio.Reader, buf []byte) {
     _, err := io.ReadFull(r, buf)
@@ -119,9 +117,7 @@ func execStmt(db *sql.DB, stmt string) {
 func main() {
     homeDir, err := os.UserHomeDir()
     f, err := os.OpenFile(homeDir + "/.bitcoin/utxo.dat", os.O_RDONLY, 0600)
-    if err != nil {
-        panic(err)
-    }
+    if err != nil { panic(err) }
     utxof := bufio.NewReader(f)
 
     // read metadata
@@ -149,31 +145,35 @@ func main() {
     coins_skipped := uint64(0)
     // read in coins
     for coin_idx := uint64(1); coin_idx <= numUTXOs; coin_idx++ {
-        //log(fmt.Sprintf("Coin %d/%d:", coin_idx, numUTXOs))
-
         // read key (COutPoint)
         var prevoutHash [32]byte
         var prevoutIndex uint32
         readIntoSlice(utxof, prevoutHash[:])
         readUInt32(utxof, &prevoutIndex)
-        //log(fmt.Sprintf("\tprevout.hash = %s", hashToStr(prevoutHash)))
-        //log(fmt.Sprintf("\tprevout.n = %d", prevoutIndex))
 
         // read value (Coin)
         code := readVARINT(utxof)
-        //log(fmt.Sprintf("\theight = %d, coinbase = %d",
-        //    code >> 1, code & 1))
-        _ = code
+        height := code >> 1
+        isCoinbase := code & 1
         amount := decompressAmount(readVARINT(utxof))
-        //log(fmt.Sprintf("\tamount = %d sats", amount))
         spkSize := readVARINT(utxof)
-        //log(fmt.Sprintf("\tspk_size = %d", spkSize))
         success, scriptPubKey := readCompressedScript(spkSize, utxof)
+
+        // write to database
         if success {
             _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, scriptPubKey, amount)
             if err != nil { panic(err) }
         } else {
             coins_skipped++
+        }
+
+        if verbose {
+            fmt.Printf("Coin %d/%d:\n", coin_idx, numUTXOs)
+            fmt.Printf("\tprevout.hash = %s\n", hashToStr(prevoutHash))
+            fmt.Printf("\tprevout.n = %d\n", prevoutIndex)
+            fmt.Printf("\theight = %d, is_coinbase = %d\n", height, isCoinbase)
+            fmt.Printf("\tamount = %d sats\n", amount)
+            fmt.Printf("\tspk_size = %d\n", spkSize)
         }
 
         if coin_idx % (1024*1024) == 0 {
