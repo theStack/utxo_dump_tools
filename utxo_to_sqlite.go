@@ -15,6 +15,13 @@ func log(str string) {
     // fmt.Println(str)
 }
 
+func readIntoSlice(r *bufio.Reader, buf []byte) {
+    _, err := io.ReadFull(r, buf)
+    if err != nil {
+        panic(err)
+    }
+}
+
 func readCompressedScript(spkSize uint64, r *bufio.Reader) ([]byte) {
     buf := make([]byte, 0, 67)
     switch spkSize {
@@ -23,31 +30,27 @@ func readCompressedScript(spkSize uint64, r *bufio.Reader) ([]byte) {
         buf[0] = 0x76
         buf[1] = 0xa9
         buf[2] = 20
-        _, err := io.ReadFull(r, buf[3:23])
-        _ = err
+        readIntoSlice(r, buf[3:23])
         buf[23] = 0x88
         buf[24] = 0xac
     case 1: // P2SH
         buf = buf[:23]
         buf[0] = 0xa9
         buf[1] = 20
-        _, err := io.ReadFull(r, buf[2:22])
-        _ = err
+        readIntoSlice(r, buf[2:22])
         buf[22] = 0x87
     case 2, 3: // P2PK (compressed)
         buf = buf[:35]
         buf[0] = 33
         buf[1] = byte(spkSize)
-        _, err := io.ReadFull(r, buf[2:34])
-        _ = err
+        readIntoSlice(r, buf[2:34])
         buf[34] = 0xac
     case 4, 5: // P2PK (uncompressed)
         buf = buf[:67]
         buf[0] = 65
         // TODO: convert compressed to uncompressed key (needs secp library :/)
         var dummy [32]byte;
-        _, err := io.ReadFull(r, dummy[:])
-        _ = err
+        readIntoSlice(r, dummy[:])
         //
         buf[66] = 0xac
     default: // others (bare multisig, segwit etc.)
@@ -56,8 +59,7 @@ func readCompressedScript(spkSize uint64, r *bufio.Reader) ([]byte) {
             panic(fmt.Sprintf("too long script with size %d\n", readSize))
         }
         buf := make([]byte, readSize)
-        _, err := io.ReadFull(r, buf[:])
-        _ = err
+        readIntoSlice(r, buf[:])
     }
 
     return buf
@@ -105,17 +107,24 @@ func hashToStr(bytes [32]byte) (string) {
     return fmt.Sprintf("%x", bytes)
 }
 
-func main() {
-    utxof2, err := os.OpenFile("/home/honey/.bitcoin/utxo.dat", os.O_RDONLY, 0600)
+func execStmt(db *sql.DB, stmt string) {
+    _, err := db.Exec(stmt)
     if err != nil {
-        return
+        panic(err)
     }
-    utxof := bufio.NewReader(utxof2)
+}
+
+func main() {
+    f, err := os.OpenFile("/home/honey/.bitcoin/utxo.dat", os.O_RDONLY, 0600)
+    if err != nil {
+        panic(err)
+    }
+    utxof := bufio.NewReader(f)
 
     // read metadata
     var blockHash [32]byte
     var numUTXOs uint64
-    _, err = io.ReadFull(utxof, blockHash[:])
+    readIntoSlice(utxof, blockHash[:])
     err = binary.Read(utxof, binary.LittleEndian, &numUTXOs)
     fmt.Printf("UTXO Snapshot at block %s, contains %d coins\n",
                hashToStr(blockHash), numUTXOs)
@@ -124,10 +133,8 @@ func main() {
     if err != nil { panic(err) }
     defer db.Close()
 
-    _, err = db.Exec("DROP TABLE IF EXISTS utxos")
-    if err != nil { panic(err) }
-    _, err = db.Exec("CREATE TABLE utxos (prevoutHash BLOB, prevoutIndex INT, scriptPubKey BLOB, amount INT)")
-    if err != nil { panic(err) }
+    execStmt(db, "DROP TABLE IF EXISTS utxos")
+    execStmt(db, "CREATE TABLE utxos (prevoutHash BLOB, prevoutIndex INT, scriptPubKey BLOB, amount INT)")
     addUTXOStmt, err := db.Prepare("INSERT INTO utxos (prevoutHash, prevoutIndex, scriptPubKey, amount) VALUES (?, ?, ?, ?)")
     if err != nil { panic(err) }
     defer addUTXOStmt.Close()
@@ -143,7 +150,7 @@ func main() {
         // read key (COutPoint)
         var prevoutHash [32]byte
         var prevoutIndex uint32
-        _, err = io.ReadFull(utxof, prevoutHash[:])
+        readIntoSlice(utxof, prevoutHash[:])
         err = binary.Read(utxof, binary.LittleEndian, &prevoutIndex)
         //log(fmt.Sprintf("\tprevout.hash = %s", hashToStr(prevoutHash)))
         //log(fmt.Sprintf("\tprevout.n = %d", prevoutIndex))
