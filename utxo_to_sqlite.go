@@ -22,8 +22,8 @@ func readIntoSlice(r *bufio.Reader, buf []byte) {
     }
 }
 
-func readCompressedScript(spkSize uint64, r *bufio.Reader) ([]byte) {
-    buf := make([]byte, 0, 67)
+func readCompressedScript(spkSize uint64, r *bufio.Reader) (bool, []byte) {
+    buf := make([]byte, 0, 67)  // enough capacity for special types (0-5)
     switch spkSize {
     case 0: // P2PKH
         buf = buf[:25]
@@ -53,6 +53,7 @@ func readCompressedScript(spkSize uint64, r *bufio.Reader) ([]byte) {
         readIntoSlice(r, dummy[:])
         //
         buf[66] = 0xac
+        return false, nil
     default: // others (bare multisig, segwit etc.)
         readSize := spkSize - 6
         if readSize > 10000 {
@@ -62,7 +63,7 @@ func readCompressedScript(spkSize uint64, r *bufio.Reader) ([]byte) {
         readIntoSlice(r, buf[:])
     }
 
-    return buf
+    return true, buf
 }
 
 func readVARINT(r *bufio.Reader) (uint64) {
@@ -143,6 +144,7 @@ func main() {
 
     t := time.Now()
 
+    coins_skipped := uint64(0)
     // read in coins
     for coin_idx := uint64(1); coin_idx <= numUTXOs; coin_idx++ {
         //log(fmt.Sprintf("Coin %d/%d:", coin_idx, numUTXOs))
@@ -164,15 +166,18 @@ func main() {
         //log(fmt.Sprintf("\tamount = %d sats", amount))
         spkSize := readVARINT(utxof)
         //log(fmt.Sprintf("\tspk_size = %d", spkSize))
-        scriptPubKey := readCompressedScript(spkSize, utxof)
-
-        _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, scriptPubKey, amount)
-        if err != nil { panic(err) }
+        success, scriptPubKey := readCompressedScript(spkSize, utxof)
+        if success {
+            _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, scriptPubKey, amount)
+            if err != nil { panic(err) }
+        } else {
+            coins_skipped++
+        }
 
         if coin_idx % (1024*1024) == 0 {
             elapsed := time.Since(t)
-            fmt.Printf("%d coins read, %s passed since start\n",
-                coin_idx, elapsed)
+            fmt.Printf("%d coins read, %d coins skipped, %s passed since start\n",
+                coin_idx, coins_skipped, elapsed)
             tx.Commit()
             tx, err = db.Begin()
         }
@@ -186,4 +191,6 @@ func main() {
     } else {
         fmt.Println("WARNING: File is not at EOF yet!")
     }
+    fmt.Printf("TOTAL: %d coins read, %d coins skiped => %d coins written.\n",
+        numUTXOs, coins_skipped, numUTXOs - coins_skipped)
 }
