@@ -47,13 +47,13 @@ func readCompressedScript(spkSize uint64, r *bufio.Reader) (bool, []byte) {
         buf[34] = 0xac
     case 4, 5: // P2PK (uncompressed)
         buf = buf[:67]
+        var compressed_pubkey [33]byte
+        compressed_pubkey[0] = byte(spkSize) - 2
+        readIntoSlice(r, compressed_pubkey[1:])
         buf[0] = 65
-        // TODO: convert compressed to uncompressed key (needs secp library :/)
-        var dummy [32]byte;
-        readIntoSlice(r, dummy[:])
-        //
+        // TODO: convert compressed to uncompressed pubkey (needs secp library :/), put in buf[1:66]
         buf[66] = 0xac
-        return false, nil
+        return false, nil // report UTXO as invalid for now
     default: // others (bare multisig, segwit etc.)
         readSize := spkSize - 6
         if readSize > 10000 {
