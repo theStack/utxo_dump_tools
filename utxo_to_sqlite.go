@@ -17,9 +17,17 @@ func log(str string) {
 
 func readIntoSlice(r *bufio.Reader, buf []byte) {
     _, err := io.ReadFull(r, buf)
-    if err != nil {
-        panic(err)
-    }
+    if err != nil { panic(err) }
+}
+
+func readUInt32(r *bufio.Reader, target *uint32) {
+    err := binary.Read(r, binary.LittleEndian, target)
+    if err != nil { panic(err) }
+}
+
+func readUInt64(r *bufio.Reader, target *uint64) {
+    err := binary.Read(r, binary.LittleEndian, target)
+    if err != nil { panic(err) }
 }
 
 func readCompressedScript(spkSize uint64, r *bufio.Reader) (bool, []byte) {
@@ -27,22 +35,17 @@ func readCompressedScript(spkSize uint64, r *bufio.Reader) (bool, []byte) {
     switch spkSize {
     case 0: // P2PKH
         buf = buf[:25]
-        buf[0] = 0x76
-        buf[1] = 0xa9
-        buf[2] = 20
+        buf[0], buf[1], buf[2] = 0x76, 0xa9, 20
         readIntoSlice(r, buf[3:23])
-        buf[23] = 0x88
-        buf[24] = 0xac
+        buf[23], buf[24] = 0x88, 0xac
     case 1: // P2SH
         buf = buf[:23]
-        buf[0] = 0xa9
-        buf[1] = 20
+        buf[0], buf[1] = 0xa9, 20
         readIntoSlice(r, buf[2:22])
         buf[22] = 0x87
     case 2, 3: // P2PK (compressed)
         buf = buf[:35]
-        buf[0] = 33
-        buf[1] = byte(spkSize)
+        buf[0], buf[1] = 33, byte(spkSize)
         readIntoSlice(r, buf[2:34])
         buf[34] = 0xac
     case 4, 5: // P2PK (uncompressed)
@@ -110,9 +113,7 @@ func hashToStr(bytes [32]byte) (string) {
 
 func execStmt(db *sql.DB, stmt string) {
     _, err := db.Exec(stmt)
-    if err != nil {
-        panic(err)
-    }
+    if err != nil { panic(err) }
 }
 
 func main() {
@@ -127,7 +128,7 @@ func main() {
     var blockHash [32]byte
     var numUTXOs uint64
     readIntoSlice(utxof, blockHash[:])
-    err = binary.Read(utxof, binary.LittleEndian, &numUTXOs)
+    readUInt64(utxof, &numUTXOs)
     fmt.Printf("UTXO Snapshot at block %s, contains %d coins\n",
                hashToStr(blockHash), numUTXOs)
 
@@ -154,7 +155,7 @@ func main() {
         var prevoutHash [32]byte
         var prevoutIndex uint32
         readIntoSlice(utxof, prevoutHash[:])
-        err = binary.Read(utxof, binary.LittleEndian, &prevoutIndex)
+        readUInt32(utxof, &prevoutIndex)
         //log(fmt.Sprintf("\tprevout.hash = %s", hashToStr(prevoutHash)))
         //log(fmt.Sprintf("\tprevout.n = %d", prevoutIndex))
 
