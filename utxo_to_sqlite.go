@@ -16,24 +16,49 @@ func log(str string) {
 }
 
 func readCompressedScript(spkSize uint64, r *bufio.Reader) ([]byte) {
-    var actualSize uint64
+    buf := make([]byte, 0, 67)
     switch spkSize {
-    case 0, 1:
-        actualSize = 20
-    case 2, 3, 4, 5:
-        actualSize = 32
-    default:
-        actualSize = spkSize - 6
-        if actualSize > 10000 {
-            panic(fmt.Sprintf("too long script with size %d\n", actualSize))
+    case 0: // P2PKH
+        buf = buf[:25]
+        buf[0] = 0x76
+        buf[1] = 0xa9
+        buf[2] = 20
+        _, err := io.ReadFull(r, buf[3:23])
+        _ = err
+        buf[23] = 0x88
+        buf[24] = 0xac
+    case 1: // P2SH
+        buf = buf[:23]
+        buf[0] = 0xa9
+        buf[1] = 20
+        _, err := io.ReadFull(r, buf[2:22])
+        _ = err
+        buf[22] = 0x87
+    case 2, 3: // P2PK (compressed)
+        buf = buf[:35]
+        buf[0] = 33
+        buf[1] = byte(spkSize)
+        _, err := io.ReadFull(r, buf[2:34])
+        _ = err
+        buf[34] = 0xac
+    case 4, 5: // P2PK (uncompressed)
+        buf = buf[:67]
+        buf[0] = 65
+        // TODO: convert compressed to uncompressed key (needs secp library :/)
+        var dummy [32]byte;
+        _, err := io.ReadFull(r, dummy[:])
+        _ = err
+        //
+        buf[66] = 0xac
+    default: // others (bare multisig, segwit etc.)
+        readSize := spkSize - 6
+        if readSize > 10000 {
+            panic(fmt.Sprintf("too long script with size %d\n", readSize))
         }
+        buf := make([]byte, readSize)
+        _, err := io.ReadFull(r, buf[:])
+        _ = err
     }
-
-    // TODO: actually decompress types 0-5!
-
-    buf := make([]byte, actualSize)
-    _, err := io.ReadFull(r, buf[:])
-    if err != nil { panic(err) }
 
     return buf
 }
