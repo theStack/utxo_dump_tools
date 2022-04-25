@@ -116,7 +116,8 @@ func execStmt(db *sql.DB, stmt string) {
 }
 
 func main() {
-    f, err := os.OpenFile("/home/honey/.bitcoin/utxo.dat", os.O_RDONLY, 0600)
+    homeDir, err := os.UserHomeDir()
+    f, err := os.OpenFile(homeDir + "/.bitcoin/utxo.dat", os.O_RDONLY, 0600)
     if err != nil {
         panic(err)
     }
