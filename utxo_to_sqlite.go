@@ -177,8 +177,8 @@ func main() {
 
         if coin_idx % (1024*1024) == 0 {
             elapsed := time.Since(t)
-            fmt.Printf("%d coins read, %d coins skipped, %s passed since start\n",
-                coin_idx, coins_skipped, elapsed)
+            fmt.Printf("%d coins read [%.2f%%], %d coins skipped, %s passed since start\n",
+                coin_idx, (float32(coin_idx)/float32(numUTXOs))*100, coins_skipped, elapsed)
             tx.Commit()
             tx, err = db.Begin()
             if err != nil { panic(err) }
