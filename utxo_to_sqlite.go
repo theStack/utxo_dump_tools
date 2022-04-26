@@ -60,7 +60,7 @@ func readCompressedScript(spkSize uint64, r *bufio.Reader) (bool, []byte) {
         if readSize > 10000 {
             panic(fmt.Sprintf("too long script with size %d\n", readSize))
         }
-        buf := make([]byte, readSize)
+        buf = make([]byte, readSize)
         readIntoSlice(r, buf[:])
     }
 
@@ -134,7 +134,7 @@ func main() {
 
     execStmt(db, "DROP TABLE IF EXISTS utxos")
     execStmt(db, "CREATE TABLE utxos (prevoutHash BLOB, prevoutIndex INT, blockHeight INT, isCoinbase INT, scriptPubKey BLOB, amount INT)")
-    addUTXOStmt, err := db.Prepare("INSERT INTO utxos (prevoutHash, prevoutIndex, blockHeight, isCoinbase, scriptPubKey, amount) VALUES (?, ?, ?, ?, ?, ?)")
+    addUTXOStmt, err := db.Prepare("INSERT INTO utxos VALUES (?, ?, ?, ?, ?, ?)")
     if err != nil { panic(err) }
     defer addUTXOStmt.Close()
     tx, err := db.Begin()
@@ -143,7 +143,6 @@ func main() {
     t := time.Now()
 
     coins_skipped := uint64(0)
-    // read in coins
     for coin_idx := uint64(1); coin_idx <= numUTXOs; coin_idx++ {
         // read key (COutPoint)
         var prevoutHash [32]byte
@@ -182,6 +181,7 @@ func main() {
                 coin_idx, coins_skipped, elapsed)
             tx.Commit()
             tx, err = db.Begin()
+            if err != nil { panic(err) }
         }
     }
     tx.Commit()
