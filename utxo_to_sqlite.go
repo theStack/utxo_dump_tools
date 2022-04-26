@@ -128,7 +128,7 @@ func main() {
     fmt.Printf("UTXO Snapshot at block %s, contains %d coins\n",
                hashToStr(blockHash), numUTXOs)
 
-    db, err := sql.Open("sqlite3", "file:utxos.sqlite3?_journal_mode=memory&_cache_size=-128000")
+    db, err := sql.Open("sqlite3", "file:utxos.sqlite3?_journal_mode=off")
     if err != nil { panic(err) }
     defer db.Close()
 
