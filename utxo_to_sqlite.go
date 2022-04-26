@@ -133,8 +133,8 @@ func main() {
     defer db.Close()
 
     execStmt(db, "DROP TABLE IF EXISTS utxos")
-    execStmt(db, "CREATE TABLE utxos (prevoutHash BLOB, prevoutIndex INT, scriptPubKey BLOB, amount INT)")
-    addUTXOStmt, err := db.Prepare("INSERT INTO utxos (prevoutHash, prevoutIndex, scriptPubKey, amount) VALUES (?, ?, ?, ?)")
+    execStmt(db, "CREATE TABLE utxos (prevoutHash BLOB, prevoutIndex INT, blockHeight INT, isCoinbase INT, scriptPubKey BLOB, amount INT)")
+    addUTXOStmt, err := db.Prepare("INSERT INTO utxos (prevoutHash, prevoutIndex, blockHeight, isCoinbase, scriptPubKey, amount) VALUES (?, ?, ?, ?, ?, ?)")
     if err != nil { panic(err) }
     defer addUTXOStmt.Close()
     tx, err := db.Begin()
@@ -161,7 +161,7 @@ func main() {
 
         // write to database
         if success {
-            _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, scriptPubKey, amount)
+            _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, height, isCoinbase, scriptPubKey, amount)
             if err != nil { panic(err) }
         } else {
             coins_skipped++
