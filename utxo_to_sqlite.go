@@ -216,7 +216,7 @@ func main() {
             fmt.Printf("\tprevout.n = %d\n", prevoutIndex)
             fmt.Printf("\theight = %d, is_coinbase = %d\n", height, isCoinbase)
             fmt.Printf("\tamount = %d sats\n", amount)
-            fmt.Printf("\tspk_size = %d\n", spkSize)
+            fmt.Printf("\tscriptPubKey = %x\n", scriptPubKey)
         }
 
         if coin_idx % (1024*1024) == 0 {
