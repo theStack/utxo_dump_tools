@@ -13,6 +13,8 @@ import (
 )
 
 const verbose bool = false;
+var prime, _ = new(big.Int).SetString( // prime used for secp256k1
+    "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16)
 
 // Decompress pubkey by calculating y = sqrt(x^3 + 7) % p
 // and negating the result if necessary
@@ -21,15 +23,11 @@ func decompressPubkey(pubkey_in []byte, pubkey_out []byte) bool {
         panic("compressed pubkey must be 33 bytes long!")
     }
     if pubkey_in[0] != 0x02 && pubkey_in[0] != 0x03 {
-        panic("compressed pubkey must have even/odd tag of 2 or 3!")
+        panic("compressed pubkey must have even/odd tag of 0x02 or 0x03!")
     }
     if len(pubkey_out) != 65 {
         panic("storage for uncompressed pubkey must be 65 bytes long!")
     }
-
-    // TODO: only create this once!
-    var prime, _ = new(big.Int).SetString(
-        "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16)
 
     x := new(big.Int).SetBytes(pubkey_in[1:])
     x2 := new(big.Int).Mul(x, x)
