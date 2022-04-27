@@ -4,14 +4,58 @@ import (
     "bufio"
     "database/sql"
     "encoding/binary"
-    _ "github.com/mattn/go-sqlite3"
     "fmt"
+    _ "github.com/mattn/go-sqlite3"
     "io"
+    "math/big"
     "os"
     "time"
 )
 
 const verbose bool = false;
+
+// Decompress pubkey by calculating y = sqrt(x^3 + 7) % p
+// and negating the result if necessary
+func decompressPubkey(pubkey_in []byte, pubkey_out []byte) bool {
+    if len(pubkey_in) != 33 {
+        panic("compressed pubkey must be 33 bytes long!")
+    }
+    if pubkey_in[0] != 0x02 && pubkey_in[0] != 0x03 {
+        panic("compressed pubkey must have even/odd tag of 2 or 3!")
+    }
+    if len(pubkey_out) != 65 {
+        panic("storage for uncompressed pubkey must be 65 bytes long!")
+    }
+
+    // TODO: only create this once!
+    var prime, _ = new(big.Int).SetString(
+        "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16)
+
+    x := new(big.Int).SetBytes(pubkey_in[1:])
+    x2 := new(big.Int).Mul(x, x)
+    x2.Mod(x2, prime) // x^2 = (x * x) % p
+    x3 := new(big.Int).Mul(x2, x)
+    x3.Mod(x3, prime) // x^3 = (x^2 * x) % p
+    rhs := new(big.Int).Add(x3, big.NewInt(7))
+    rhs.Mod(rhs, prime) // rhs = (x^3 + 7) % p
+    y := new(big.Int).ModSqrt(rhs, prime) // y = sqrt(x^3 + 7) % p
+    if y == nil {
+        fmt.Printf("WARNING: Couldn't find modular square root!\n")
+        return false
+    }
+
+    tag_is_odd := pubkey_in[0] == 3
+    y_is_odd := y.Bit(0) == 1
+    if tag_is_odd != y_is_odd {
+        neg_y := new(big.Int).Sub(big.NewInt(0), y)
+        y.Mod(neg_y, prime)
+    }
+
+    pubkey_out[0] = 0x04
+    x.FillBytes(pubkey_out[1:33])
+    y.FillBytes(pubkey_out[33:65])
+    return true
+}
 
 func readIntoSlice(r *bufio.Reader, buf []byte) {
     _, err := io.ReadFull(r, buf)
@@ -52,9 +96,11 @@ func readCompressedScript(spkSize uint64, r *bufio.Reader) (bool, []byte) {
         compressed_pubkey[0] = byte(spkSize) - 2
         readIntoSlice(r, compressed_pubkey[1:])
         buf[0] = 65
-        // TODO: convert compressed to uncompressed pubkey (needs secp library :/), put in buf[1:66]
+        success := decompressPubkey(compressed_pubkey[:], buf[1:66])
+        if !success {
+            return false, nil
+        }
         buf[66] = 0xac
-        return false, nil // report UTXO as invalid for now
     default: // others (bare multisig, segwit etc.)
         readSize := spkSize - 6
         if readSize > 10000 {

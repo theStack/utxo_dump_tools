@@ -16,5 +16,4 @@ Note that the first run likely takes longer, as golang has to fetch and build th
 ## TODOs
 - support specifying input filename as parameter (right now it is fixed to `~/.bitcoin/utxo.dat`)
 - support specifying output filename as parameter (right now it is fixed to `./utxos.sqlite3`)
-- support decompressing and writing P2PK outputs with uncompressed pubkeys (right now they are skipped)
 - ...
