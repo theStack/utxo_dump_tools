@@ -118,16 +118,17 @@ func main() {
         num3072.Mul(num3072, num3072_insert)
         num3072.Mod(num3072, num3072_prime)
 
-        var xxx [384]byte
-        num3072.FillBytes(xxx[:])
-        for _, b := range xxx {
-            fmt.Printf("%02x", b)
-        }
-        for i, j := 0, 383; i < j; i, j = i+1, j-1 {
-            xxx[i], xxx[j] = xxx[j], xxx[i]
-        }
-        fmt.Printf("\n")
-        hashed = sha256.Sum256(xxx[:])
-        fmt.Printf("Final SHA256 of the Num3072 (MuHash): %s\n", hashToStr(hashed))
     }
+
+    var result [384]byte
+    num3072.FillBytes(result[:])
+    for _, b := range result {
+        fmt.Printf("%02x", b)
+    }
+    for i, j := 0, 383; i < j; i, j = i+1, j-1 {
+        result[i], result[j] = result[j], result[i]
+    }
+    fmt.Printf("\n")
+    hashed := sha256.Sum256(result[:])
+    fmt.Printf("Final SHA256 of the Num3072 (MuHash): %s\n", hashToStr(hashed))
 }
