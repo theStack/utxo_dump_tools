@@ -15,6 +15,12 @@ import (
 const verbose bool = true;
 var num3072_prime = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 3072), big.NewInt(1103717))
 
+func hash256SwapEndianness(hash256 []byte) {
+    for i, j := 0, 31; i < j; i, j = i+1, j-1 {
+        hash256[i], hash256[j] = hash256[j], hash256[i]
+    }
+}
+
 func num3072SwapEndianness(num3072 []byte) {
     for i, j := 0, 383; i < j; i, j = i+1, j-1 {
         num3072[i], num3072[j] = num3072[j], num3072[i]
@@ -22,9 +28,7 @@ func num3072SwapEndianness(num3072 []byte) {
 }
 
 func hashToStr(bytes [32]byte) (string) {
-    for i, j := 0, 31; i < j; i, j = i+1, j-1 {
-        bytes[i], bytes[j] = bytes[j], bytes[i]
-    }
+    hash256SwapEndianness(bytes[:])
     return fmt.Sprintf("%x", bytes)
 }
 
@@ -83,9 +87,7 @@ func main() {
 
         txid, err := hex.DecodeString(txid_hex)
         if err != nil { panic(err) }
-        for i, j := 0, 31; i < j; i, j = i+1, j-1 {
-            txid[i], txid[j] = txid[j], txid[i]
-        }
+        hash256SwapEndianness(txid)
         scriptpubkey, err := hex.DecodeString(scriptpubkey_hex)
         if err != nil { panic(err) }
 
