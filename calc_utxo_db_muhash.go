@@ -102,8 +102,7 @@ func main() {
         txser := serializeTransaction(txid, uint32(vout), value, uint32(coinbase), uint32(height), scriptpubkey)
         txser_hash := sha256.Sum256(txser)
         fmt.Printf("SHA256 of the serialized UTXO: %x\n", txser_hash)
-        nonce := [12]byte{0,0,0,0,0,0,0,0,0,0,0,0}
-        cc20, err := chacha20.NewUnauthenticatedCipher(txser_hash[:], nonce[:])
+        cc20, err := chacha20.NewUnauthenticatedCipher(txser_hash[:], make([]byte, 12))
         if err != nil { panic(err) }
         var num3072_raw [384]byte
         cc20.XORKeyStream(num3072_raw[:], num3072_raw[:])
@@ -122,5 +121,5 @@ func main() {
     num3072.FillBytes(result[:])
     num3072SwapEndianness(result[:])
     muhash_final := sha256.Sum256(result[:])
-    fmt.Printf("Final SHA256 of the Num3072 (MuHash): %s\n", hashToStr(muhash_final))
+    fmt.Printf("MuHash: %s\n", hashToStr(muhash_final))
 }
