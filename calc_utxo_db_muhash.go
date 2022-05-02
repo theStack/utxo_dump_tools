@@ -76,10 +76,10 @@ func main() {
 
     for rows.Next() {
         var txid_hex string
-        var vout uint64
+        var vout uint32
         var value uint64
-        var coinbase uint64
-        var height uint64
+        var coinbase uint32
+        var height uint32
         var scriptpubkey_hex string
 
         err = rows.Scan(&txid_hex, &vout, &value, &coinbase, &height, &scriptpubkey_hex)
@@ -101,7 +101,7 @@ func main() {
             fmt.Printf("\n")
         }
 
-        txser := serializeTransaction(txid, uint32(vout), value, uint32(coinbase), uint32(height), scriptpubkey)
+        txser := serializeTransaction(txid, vout, value, coinbase, height, scriptpubkey)
         txser_hash := sha256.Sum256(txser)
         fmt.Printf("SHA256 of the serialized UTXO: %x\n", txser_hash)
         cc20, err := chacha20.NewUnauthenticatedCipher(txser_hash[:], make([]byte, 12))
