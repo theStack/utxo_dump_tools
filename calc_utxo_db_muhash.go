@@ -93,16 +93,11 @@ func main() {
             fmt.Printf("\n")
         }
 
-        muser := serializeTransaction(txid, uint32(vout), value, uint32(coinbase), uint32(height), scriptpubkey)
-        fmt.Printf("FIRST UTXO for muhash, serialized: %x\n", muser)
-
-        ///////////////// next step, hash of that thing /////////////////
-        hashed := sha256.Sum256(muser)
-        fmt.Printf("SHA256 of the serialized UTXO: %x\n", hashed)
-
-        //// chacha20 ////
+        txser := serializeTransaction(txid, uint32(vout), value, uint32(coinbase), uint32(height), scriptpubkey)
+        txser_hash := sha256.Sum256(txser)
+        fmt.Printf("SHA256 of the serialized UTXO: %x\n", txser_hash)
         nonce := [12]byte{0,0,0,0,0,0,0,0,0,0,0,0}
-        cc20, err := chacha20.NewUnauthenticatedCipher(hashed[:], nonce[:])
+        cc20, err := chacha20.NewUnauthenticatedCipher(txser_hash[:], nonce[:])
         if err != nil { panic(err) }
         var num3072_raw [384]byte
         cc20.XORKeyStream(num3072_raw[:], num3072_raw[:])
@@ -117,18 +112,14 @@ func main() {
 
         num3072.Mul(num3072, num3072_insert)
         num3072.Mod(num3072, num3072_prime)
-
     }
 
+    // Finalize MuHash
     var result [384]byte
     num3072.FillBytes(result[:])
-    for _, b := range result {
-        fmt.Printf("%02x", b)
-    }
     for i, j := 0, 383; i < j; i, j = i+1, j-1 {
         result[i], result[j] = result[j], result[i]
     }
-    fmt.Printf("\n")
-    hashed := sha256.Sum256(result[:])
-    fmt.Printf("Final SHA256 of the Num3072 (MuHash): %s\n", hashToStr(hashed))
+    muhash_final := sha256.Sum256(result[:])
+    fmt.Printf("Final SHA256 of the Num3072 (MuHash): %s\n", hashToStr(muhash_final))
 }
