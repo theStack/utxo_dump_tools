@@ -22,6 +22,31 @@ func hashToStr(bytes [32]byte) (string) {
     return fmt.Sprintf("%x", bytes)
 }
 
+func serializeTransaction(txid []byte, vout uint32,
+                          value uint64, coinbase uint32, height uint32,
+                          scriptpubkey []byte) []byte {
+    ser := make([]byte, 0, 128)
+    tmp4 := make([]byte, 4)
+    tmp8 := make([]byte, 8)
+
+    ser = append(ser, txid...)
+    binary.LittleEndian.PutUint32(tmp4, vout)
+    ser = append(ser, tmp4...)
+    binary.LittleEndian.PutUint32(tmp4, 2*height + coinbase)
+    ser = append(ser, tmp4...)
+    binary.LittleEndian.PutUint64(tmp8, value)
+    ser = append(ser, tmp8...)
+
+    // TODO: also handle larger pubkeyscript-sizes (compact size...)
+    if len(scriptpubkey) > 250 {
+        panic("TODO: implement compact size serialization, len of scriptPubKey is too long...")
+    }
+    ser = append(ser, byte(len(scriptpubkey)))
+    ser = append(ser, scriptpubkey...)
+
+    return ser
+}
+
 func main() {
     db, err := sql.Open("sqlite3", "file:/home/honeybadger/.bitcoin/signet/utxo.sqlite")
     if err != nil { panic(err) }
@@ -68,30 +93,7 @@ func main() {
             fmt.Printf("\n")
         }
 
-        //////////////////////////////////////
-        // serialize to be ready for muhash
-        //////////////////////////////////////
-        muser := make([]byte, 0, 128)
-        muser = append(muser, txid...)
-
-        tmp4 := make([]byte, 4)
-        tmp8 := make([]byte, 8)
-        binary.LittleEndian.PutUint32(tmp4, uint32(vout))
-        muser = append(muser, tmp4...)
-
-        binary.LittleEndian.PutUint32(tmp4, 2*uint32(height) + uint32(coinbase))
-        muser = append(muser, tmp4...)
-
-        binary.LittleEndian.PutUint64(tmp8, value)
-        muser = append(muser, tmp8...)
-
-        // TODO: also handle larger pubkeyscript-sizes (compact size...)
-        if len(scriptpubkey) > 250 {
-            panic("TODO: implement compact size serialization, len of scriptPubKey is too long...")
-        }
-        muser = append(muser, byte(len(scriptpubkey)))
-        muser = append(muser, scriptpubkey...)
-
+        muser := serializeTransaction(txid, uint32(vout), value, uint32(coinbase), uint32(height), scriptpubkey)
         fmt.Printf("FIRST UTXO for muhash, serialized: %x\n", muser)
 
         ///////////////// next step, hash of that thing /////////////////
