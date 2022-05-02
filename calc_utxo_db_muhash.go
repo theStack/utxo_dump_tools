@@ -15,6 +15,12 @@ import (
 const verbose bool = true;
 var num3072_prime = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 3072), big.NewInt(1103717))
 
+func num3072SwapEndianness(num3072 []byte) {
+    for i, j := 0, 383; i < j; i, j = i+1, j-1 {
+        num3072[i], num3072[j] = num3072[j], num3072[i]
+    }
+}
+
 func hashToStr(bytes [32]byte) (string) {
     for i, j := 0, 31; i < j; i, j = i+1, j-1 {
         bytes[i], bytes[j] = bytes[j], bytes[i]
@@ -103,10 +109,7 @@ func main() {
         cc20.XORKeyStream(num3072_raw[:], num3072_raw[:])
         fmt.Printf("Chacha20 of SHA256 of the serialized UTXO: %x\n", num3072_raw)
 
-        for i, j := 0, 383; i < j; i, j = i+1, j-1 {
-            num3072_raw[i], num3072_raw[j] = num3072_raw[j], num3072_raw[i]
-        }
-
+        num3072SwapEndianness(num3072_raw[:])
         num3072_insert := new(big.Int).SetBytes(num3072_raw[:])
         num3072_insert.Mod(num3072_insert, num3072_prime)
 
@@ -117,9 +120,7 @@ func main() {
     // Finalize MuHash
     var result [384]byte
     num3072.FillBytes(result[:])
-    for i, j := 0, 383; i < j; i, j = i+1, j-1 {
-        result[i], result[j] = result[j], result[i]
-    }
+    num3072SwapEndianness(result[:])
     muhash_final := sha256.Sum256(result[:])
     fmt.Printf("Final SHA256 of the Num3072 (MuHash): %s\n", hashToStr(muhash_final))
 }
