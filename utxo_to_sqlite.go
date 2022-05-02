@@ -13,6 +13,7 @@ import (
 )
 
 const verbose bool = false;
+const write_data_as_hex_text bool = true;
 var prime, _ = new(big.Int).SetString( // prime used for secp256k1
     "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16)
 
@@ -177,7 +178,11 @@ func main() {
     defer db.Close()
 
     execStmt(db, "DROP TABLE IF EXISTS utxos")
-    execStmt(db, "CREATE TABLE utxos (txid BLOB, vout INT, value INT, coinbase INT, height INT, scriptpubkey BLOB)")
+    if write_data_as_hex_text {
+        execStmt(db, "CREATE TABLE utxos(txid TEXT, vout INT, value INT, coinbase INT, height INT, scriptpubkey TEXT)")
+    } else {
+        execStmt(db, "CREATE TABLE utxos(txid BLOB, vout INT, value INT, coinbase INT, height INT, scriptpubkey BLOB)")
+    }
     addUTXOStmt, err := db.Prepare("INSERT INTO utxos VALUES (?, ?, ?, ?, ?, ?)")
     if err != nil { panic(err) }
     defer addUTXOStmt.Close()
@@ -204,7 +209,11 @@ func main() {
 
         // write to database
         if success {
-            _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, amount, isCoinbase, height, scriptPubKey)
+            if write_data_as_hex_text {
+                _, err = tx.Stmt(addUTXOStmt).Exec(hashToStr(prevoutHash), prevoutIndex, amount, isCoinbase, height, fmt.Sprintf("%x", scriptPubKey))
+            } else {
+                _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, amount, isCoinbase, height, scriptPubKey)
+            }
             if err != nil { panic(err) }
         } else {
             coins_skipped++
