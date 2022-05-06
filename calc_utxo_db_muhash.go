@@ -120,8 +120,6 @@ func main() {
 
         num3072SwapEndianness(num3072_raw[:])
         num3072_insert := new(big.Int).SetBytes(num3072_raw[:])
-        num3072_insert.Mod(num3072_insert, num3072_prime)
-
         num3072.Mul(num3072, num3072_insert)
         num3072.Mod(num3072, num3072_prime)
 
