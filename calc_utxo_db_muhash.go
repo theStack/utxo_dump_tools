@@ -47,18 +47,24 @@ func serializeTransaction(txid []byte, vout uint32,
     binary.LittleEndian.PutUint64(tmp8, value)
     ser = append(ser, tmp8...)
 
-    // TODO: also handle larger pubkeyscript-sizes (compact size...)
-    if len(scriptpubkey) > 250 {
-        panic("TODO: implement compact size serialization, len of scriptPubKey is too long...")
+    if len(scriptpubkey) < 253 {
+        ser = append(ser, byte(len(scriptpubkey)))
+    } else if len(scriptpubkey) <= 10000 {
+        tmp2 := make([]byte, 2)
+        binary.LittleEndian.PutUint16(tmp2, uint16(len(scriptpubkey)))
+        ser = append(ser, 253)
+        ser = append(ser, tmp2...)
+    } else {
+        panic(fmt.Sprintf("scriptPubKey too long (%d > 10000)!", len(scriptpubkey)))
     }
-    ser = append(ser, byte(len(scriptpubkey)))
+
     ser = append(ser, scriptpubkey...)
 
     return ser
 }
 
 func main() {
-    db, err := sql.Open("sqlite3", "file:/home/honeybadger/.bitcoin/signet/utxo.sqlite")
+    db, err := sql.Open("sqlite3", "file:/home/honeybadger/.bitcoin/utxo.sqlite")
     if err != nil { panic(err) }
     defer db.Close()
 
