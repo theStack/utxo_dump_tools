@@ -9,10 +9,10 @@ import (
     _ "github.com/mattn/go-sqlite3"
     "golang.org/x/crypto/chacha20"
     "math/big"
-    //"time"
+    "time"
 )
 
-const verbose bool = true;
+const verbose bool = false;
 var num3072_prime = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 3072), big.NewInt(1103717))
 
 func hash256SwapEndianness(hash256 []byte) {
@@ -70,9 +70,10 @@ func main() {
     if err != nil { panic(err) }
     defer rows.Close()
 
-    //t := time.Now()
+    t := time.Now()
 
     num3072 := big.NewInt(1)
+    coin_idx := uint64(0)
 
     for rows.Next() {
         var txid_hex string
@@ -84,6 +85,7 @@ func main() {
 
         err = rows.Scan(&txid_hex, &vout, &value, &coinbase, &height, &scriptpubkey_hex)
         if err != nil { panic(err) }
+        coin_idx++
 
         txid, err := hex.DecodeString(txid_hex)
         if err != nil { panic(err) }
@@ -103,12 +105,12 @@ func main() {
 
         txser := serializeTransaction(txid, vout, value, coinbase, height, scriptpubkey)
         txser_hash := sha256.Sum256(txser)
-        fmt.Printf("SHA256 of the serialized UTXO: %x\n", txser_hash)
+        //fmt.Printf("SHA256 of the serialized UTXO: %x\n", txser_hash)
         cc20, err := chacha20.NewUnauthenticatedCipher(txser_hash[:], make([]byte, 12))
         if err != nil { panic(err) }
         var num3072_raw [384]byte
         cc20.XORKeyStream(num3072_raw[:], num3072_raw[:])
-        fmt.Printf("Chacha20 of SHA256 of the serialized UTXO: %x\n", num3072_raw)
+        //fmt.Printf("Chacha20 of SHA256 of the serialized UTXO: %x\n", num3072_raw)
 
         num3072SwapEndianness(num3072_raw[:])
         num3072_insert := new(big.Int).SetBytes(num3072_raw[:])
@@ -116,6 +118,11 @@ func main() {
 
         num3072.Mul(num3072, num3072_insert)
         num3072.Mod(num3072, num3072_prime)
+
+        if coin_idx % (512*1024) == 0 {
+            elapsed := time.Since(t)
+            fmt.Printf("%d coins read, %s passed since start\n", coin_idx, elapsed)
+        }
     }
 
     // Finalize MuHash
