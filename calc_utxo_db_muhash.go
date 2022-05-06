@@ -30,28 +30,25 @@ func serializeTransaction(txid []byte, vout uint32,
                           value uint64, coinbase uint32, height uint32,
                           scriptpubkey []byte) []byte {
     ser := make([]byte, 0, 128)
-    tmp4 := make([]byte, 4)
-    tmp8 := make([]byte, 8)
+    var tmp [8]byte
 
     ser = append(ser, txid...)
-    binary.LittleEndian.PutUint32(tmp4, vout)
-    ser = append(ser, tmp4...)
-    binary.LittleEndian.PutUint32(tmp4, 2*height + coinbase)
-    ser = append(ser, tmp4...)
-    binary.LittleEndian.PutUint64(tmp8, value)
-    ser = append(ser, tmp8...)
+    binary.LittleEndian.PutUint32(tmp[:4], vout)
+    ser = append(ser, tmp[:4]...)
+    binary.LittleEndian.PutUint32(tmp[:4], 2*height + coinbase)
+    ser = append(ser, tmp[:4]...)
+    binary.LittleEndian.PutUint64(tmp[:8], value)
+    ser = append(ser, tmp[:8]...)
 
     if len(scriptpubkey) < 253 {
         ser = append(ser, byte(len(scriptpubkey)))
     } else if len(scriptpubkey) <= 10000 {
-        tmp2 := make([]byte, 2)
-        binary.LittleEndian.PutUint16(tmp2, uint16(len(scriptpubkey)))
+        binary.LittleEndian.PutUint16(tmp[:2], uint16(len(scriptpubkey)))
         ser = append(ser, 253)
-        ser = append(ser, tmp2...)
+        ser = append(ser, tmp[:2]...)
     } else {
         panic(fmt.Sprintf("scriptPubKey too long (%d > 10000)!", len(scriptpubkey)))
     }
-
     ser = append(ser, scriptpubkey...)
 
     return ser
@@ -105,12 +102,10 @@ func main() {
 
         txser := serializeTransaction(txid, vout, value, coinbase, height, scriptpubkey)
         txser_hash := sha256.Sum256(txser)
-        //fmt.Printf("SHA256 of the serialized UTXO: %x\n", txser_hash)
         cc20, err := chacha20.NewUnauthenticatedCipher(txser_hash[:], make([]byte, 12))
         if err != nil { panic(err) }
         var num3072_raw [384]byte
         cc20.XORKeyStream(num3072_raw[:], num3072_raw[:])
-        //fmt.Printf("Chacha20 of SHA256 of the serialized UTXO: %x\n", num3072_raw)
 
         swapBytes(num3072_raw[:])
         num3072_insert := new(big.Int).SetBytes(num3072_raw[:])
