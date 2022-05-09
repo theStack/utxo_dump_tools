@@ -160,8 +160,14 @@ func execStmt(db *sql.DB, stmt string) {
 }
 
 func main() {
-    homeDir, err := os.UserHomeDir()
-    f, err := os.OpenFile(homeDir + "/.bitcoin/utxo.dat", os.O_RDONLY, 0600)
+    if len(os.Args) != 3 {
+        fmt.Printf("Usage:\n\tgo run utxo_to_sqlite.go <input-file> <output-file>\n")
+        os.Exit(1)
+    }
+    inputFilename := os.Args[1]
+    outputFilename := os.Args[2]
+
+    f, err := os.OpenFile(inputFilename, os.O_RDONLY, 0600)
     if err != nil { panic(err) }
     utxof := bufio.NewReader(f)
 
@@ -173,7 +179,7 @@ func main() {
     fmt.Printf("UTXO Snapshot at block %s, contains %d coins\n",
                hashToStr(blockHash), numUTXOs)
 
-    db, err := sql.Open("sqlite3", "file:utxos.sqlite3?_journal_mode=off")
+    db, err := sql.Open("sqlite3", "file:" + outputFilename + "?_journal_mode=off")
     if err != nil { panic(err) }
     defer db.Close()
 

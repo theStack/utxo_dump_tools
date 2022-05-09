@@ -13,7 +13,5 @@ $ go run utxo_to_sqlite.go
 Note that the first run likely takes longer, as golang has to fetch and build the SQLite library
 (https://github.com/mattn/go-sqlite3) first.
 
-## TODOs
-- support specifying input filename as parameter (right now it is fixed to `~/.bitcoin/utxo.dat`)
-- support specifying output filename as parameter (right now it is fixed to `./utxos.sqlite3`)
-- ...
+## TODO
+- add verification tool that calculates the MuHash of a sqlite UTXO set
