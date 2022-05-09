@@ -12,8 +12,8 @@ import (
     "time"
 )
 
-const verbose bool = false;
-const write_data_as_hex_text bool = true;
+const verbose bool = false
+const write_data_as_hex_text bool = true
 var prime, _ = new(big.Int).SetString( // prime used for secp256k1
     "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16)
 
