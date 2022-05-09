@@ -191,7 +191,6 @@ func main() {
 
     t := time.Now()
 
-    coins_skipped := uint64(0)
     for coin_idx := uint64(1); coin_idx <= numUTXOs; coin_idx++ {
         // read key (COutPoint)
         var prevoutHash [32]byte
@@ -206,18 +205,17 @@ func main() {
         amount := decompressAmount(readVARINT(utxof))
         spkSize := readVARINT(utxof)
         success, scriptPubKey := readCompressedScript(spkSize, utxof)
+        if !success {
+            panic("Error decompressing script.")
+        }
 
         // write to database
-        if success {
-            if write_data_as_hex_text {
-                _, err = tx.Stmt(addUTXOStmt).Exec(hashToStr(prevoutHash), prevoutIndex, amount, isCoinbase, height, fmt.Sprintf("%x", scriptPubKey))
-            } else {
-                _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, amount, isCoinbase, height, scriptPubKey)
-            }
-            if err != nil { panic(err) }
+        if write_data_as_hex_text {
+            _, err = tx.Stmt(addUTXOStmt).Exec(hashToStr(prevoutHash), prevoutIndex, amount, isCoinbase, height, fmt.Sprintf("%x", scriptPubKey))
         } else {
-            coins_skipped++
+            _, err = tx.Stmt(addUTXOStmt).Exec(prevoutHash[:], prevoutIndex, amount, isCoinbase, height, scriptPubKey)
         }
+        if err != nil { panic(err) }
 
         if verbose {
             fmt.Printf("Coin %d/%d:\n", coin_idx, numUTXOs)
@@ -230,8 +228,8 @@ func main() {
 
         if coin_idx % (1024*1024) == 0 {
             elapsed := time.Since(t)
-            fmt.Printf("%d coins read [%.2f%%], %d coins skipped, %s passed since start\n",
-                coin_idx, (float32(coin_idx)/float32(numUTXOs))*100, coins_skipped, elapsed)
+            fmt.Printf("%d coins read [%.2f%%], %s passed since start\n",
+                coin_idx, (float32(coin_idx)/float32(numUTXOs))*100, elapsed)
             tx.Commit()
             tx, err = db.Begin()
             if err != nil { panic(err) }
@@ -246,6 +244,5 @@ func main() {
     } else {
         fmt.Println("WARNING: File is not at EOF yet!")
     }
-    fmt.Printf("TOTAL: %d coins read, %d coins skiped => %d coins written.\n",
-        numUTXOs, coins_skipped, numUTXOs - coins_skipped)
+    fmt.Printf("TOTAL: %d coins read and written.\n", numUTXOs)
 }
