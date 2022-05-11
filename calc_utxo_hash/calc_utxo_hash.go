@@ -9,6 +9,7 @@ import (
     _ "github.com/mattn/go-sqlite3"
     "golang.org/x/crypto/chacha20"
     "math/big"
+    "os"
     "time"
 )
 
@@ -55,7 +56,13 @@ func serializeTransaction(txid []byte, vout uint32,
 }
 
 func main() {
-    db, err := sql.Open("sqlite3", "file:/home/honeybadger/.bitcoin/utxo.sqlite")
+    if len(os.Args) != 2 {
+        fmt.Printf("Usage:\n\tgo run calc_utxo_hash.go <input-file>\n")
+        os.Exit(1)
+    }
+    inputFilename := os.Args[1]
+
+    db, err := sql.Open("sqlite3", "file:" + inputFilename)
     if err != nil { panic(err) }
     defer db.Close()
 
