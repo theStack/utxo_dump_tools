@@ -20,5 +20,17 @@ $ go run utxo_to_sqlite.go ~/.bitcoin/utxo.dat ./utxo.sqlite
 Note that the first run likely takes longer, as golang has to fetch and build
 the SQLite library (https://github.com/mattn/go-sqlite3) first.
 
+## `calc_utxo_hash`
+`calc_utxo_hash` calculates the UTXO set hash of a dump in SQLite format. Right
+now only the _MuHash_ type is supported, which can be determined on the Bitcoin
+Core via the `gettxoutsetinfo` RPC (pass `"muhash"` as first parameter).
+
+Run via:
+```
+$ git clone https://github.com/theStack/utxo_sqlite_tools.git
+$ cd utxo_sqlite_tools/calc_utxo_hash
+$ go run calc_utxo_hash.go ./utxo.sqlite
+```
+
 # TODO
-- add verification tool that calculates the MuHash of a sqlite UTXO set
+- support also calculating the compact-serialized hash
