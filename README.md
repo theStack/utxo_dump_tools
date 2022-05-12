@@ -10,7 +10,11 @@ the UTXO set in SQLite database format.
 ### `utxo_to_sqlite`
 
 `utxo_to_sqlite` is a simple tool for converting a compact-serialized UTXO set
-to a SQLite database.
+to a SQLite database. A table `utxos` is created with the following schema
+(matching PR #24952):
+```
+CREATE TABLE utxos(txid TEXT, vout INT, value INT, coinbase INT, height INT, scriptpubkey TEXT)
+```
 
 Run via:
 ```
