@@ -16,7 +16,12 @@ to a SQLite database. A table `utxos` is created with the following schema
 CREATE TABLE utxos(txid TEXT, vout INT, value INT, coinbase INT, height INT, scriptpubkey TEXT)
 ```
 
-Run via:
+First, let bitcoind create the compact-serialized UTXO set dump:
+```
+$ bitcoin-cli dumptxoutset utxos.dat
+```
+
+Then, run the conversion tool via:
 ```
 $ cd utxo_to_sqlite
 $ go run utxo_to_sqlite ~/.bitcoin/utxos.dat ./utxos.sqlite
