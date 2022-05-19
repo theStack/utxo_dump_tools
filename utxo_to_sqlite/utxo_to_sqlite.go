@@ -4,6 +4,7 @@ import (
     "bufio"
     "database/sql"
     "encoding/binary"
+    "flag"
     "fmt"
     _ "github.com/mattn/go-sqlite3"
     "io"
@@ -12,7 +13,7 @@ import (
     "time"
 )
 
-const verbose bool = false
+var verbose bool = false
 const write_data_as_hex_text bool = true
 var prime, _ = new(big.Int).SetString( // prime used for secp256k1
     "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16)
@@ -160,12 +161,22 @@ func execStmt(db *sql.DB, stmt string) {
 }
 
 func main() {
-    if len(os.Args) != 3 {
-        fmt.Printf("Usage:\n\tgo run utxo_to_sqlite.go <input-file> <output-file>\n")
+    flag.BoolVar(&verbose, "v", false, "show verbose output for each UTXO")
+    flag.Usage = func() {
+        w := flag.CommandLine.Output()
+        fmt.Fprintf(w, "Usage: go run utxo_to_sqlite.go [-v] FILEIN FILEOUT\n\n")
+        fmt.Fprintf(w, "Convert compact-serialized UTXO set FILEIN\n")
+        fmt.Fprintf(w, "to a SQLite3 database format file FILEOUT\n\n")
+        fmt.Fprintf(w, "\t")
+        flag.PrintDefaults()
+    }
+    flag.Parse()
+    if len(flag.Args()) != 2 {
+        flag.Usage()
         os.Exit(1)
     }
-    inputFilename := os.Args[1]
-    outputFilename := os.Args[2]
+    inputFilename := flag.Args()[0]
+    outputFilename := flag.Args()[1]
 
     f, err := os.OpenFile(inputFilename, os.O_RDONLY, 0600)
     if err != nil { panic(err) }
