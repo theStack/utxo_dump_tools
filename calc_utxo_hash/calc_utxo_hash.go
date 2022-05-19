@@ -5,6 +5,7 @@ import (
     "database/sql"
     "encoding/binary"
     "encoding/hex"
+    "flag"
     "fmt"
     _ "github.com/mattn/go-sqlite3"
     "golang.org/x/crypto/chacha20"
@@ -13,7 +14,7 @@ import (
     "time"
 )
 
-const verbose bool = false;
+var verbose bool = false
 var num3072_prime = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 3072), big.NewInt(1103717))
 
 func swapBytes(bytes []byte) {
@@ -56,11 +57,20 @@ func serializeTransaction(txid []byte, vout uint32,
 }
 
 func main() {
-    if len(os.Args) != 2 {
-        fmt.Printf("Usage:\n\tgo run calc_utxo_hash.go <input-file>\n")
+    flag.BoolVar(&verbose, "v", false, "show verbose output for each UTXO")
+    flag.Usage = func() {
+        w := flag.CommandLine.Output()
+        fmt.Fprintf(w, "Usage: go run calc_utxo_hash.go [-v] UTXOFILE\n\n")
+        fmt.Fprintf(w, "Calculate MuHash for a UTXOFILE in SQLite3 format\n\n")
+        fmt.Fprintf(w, "\t")
+        flag.PrintDefaults()
+    }
+    flag.Parse()
+    if len(flag.Args()) != 1 {
+        flag.Usage()
         os.Exit(1)
     }
-    inputFilename := os.Args[1]
+    inputFilename := flag.Args()[0]
 
     db, err := sql.Open("sqlite3", "file:" + inputFilename)
     if err != nil { panic(err) }
